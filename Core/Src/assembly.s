@@ -171,7 +171,7 @@ increament_by_2:
 
 	@ Turn LEDs off
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
-	MOVS R1, #0b00001111    @ Reset all LEDs (GPIOB Pins 0-7) to off
+	MOVS R1, #0b00001111    @ Reset all LEDs (GPIOB Pins 0-7) to of
 	STR R1, [R0, #24]
 	MOV R2, R3
 	BL delay              	@ Call delay
@@ -192,7 +192,7 @@ increament_by_2:
 	MOVS R1, #0b11111111    @ Reset all LEDs (GPIOB Pins 0-7) to off
 	STR R1, [R0, #24]
 	MOV R2, R3
-	BL delay              	@ Call delay
+	BL delay
 
 	BL freeze               @ If SW3 is pressed (PA3 == 0), call increament_by_2 subroutine
 
