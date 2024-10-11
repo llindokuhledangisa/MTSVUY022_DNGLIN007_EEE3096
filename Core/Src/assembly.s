@@ -71,7 +71,7 @@ set_shot_delay:
 set_delay:
 	@ Turn LEDs on
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
-	MOVS R1, #0b00000001    @ Set all LEDs (GPIOB Pins 0-7) to on
+	MOVS R1, #0b00000001    
 	STR R1, [R0, #24]
 	MOV R2, R3
 	BL delay
