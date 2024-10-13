@@ -36,52 +36,36 @@ ASM_Main:
 
 main_loop:
 
-    @ If SW0 is not pressed, set short delay
+    @ set delay to long as default
 	LDR R3, LONG_DELAY_CNT
 	MOVS R4, 0
 
-
-
+	//Turn off all LEDs
     LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
 	MOVS R1, #0b11111111    @ Reset all LEDs (GPIOB Pins 0-7) to off
 	STR R1, [R0, #40]
 
-
-
-	@ Check if SW1 (PA1) is pressed
-	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
-	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
-	LSLS R1, R1, #30        @ Shift left by 30 to move bit 1 (PA1) to the MSB
-	LSRS R1, R1, #31        @ Shift right by 31 to move MSB (original bit 1) to the LSB
-	CMP R1, #0              @ Compare R1 with 0 to check if SW1 is pressed
-	BEQ set_short_delay
-
+	BL sw1_handler			@ Check if SW1 (PA1) is pressed to change delay
 
     B continue  @ If SW1 is not pressed, skip the BL
 
-continue:
+continue: //handles the two other buttons
 
-	@ Check if SW0 (PA0) is pressed
-	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
-	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
-	LSLS R1, R1, #31        @ Test if bit 0 (PA0) is low (SW0 pressed)
-	BEQ increament_by_2     @ If pressed, branch to set_long_delay
+	BL sw0_handler
+	BL sw2_handler
 
-
-	@ Check if SW2 (PA2) is pressed
-	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
-	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
-	LSLS R1, R1, #29        @ Shift left by 29 to move bit 2 (PA2) to the MSB
-	LSRS R1, R1, #31        @ Shift right by 31 to move MSB (original bit 2) to the LSB
-	BEQ sw2_pattern         @ If SW2 is pressed (PA2 == 0), branch to increment_by_2
-
-set_delay:
+increment_by_1: //increment by one branch
 	@ Turn LEDs on
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
 	MOV R1, R4
 	STR R1, [R0, #24]
 	MOV R2, R3
 	BL delay
+
+	//handlers to check all buttons
+	BL sw0_handler
+	BL sw1_handler
+	BL sw2_handler
 	BL freeze
 
 	MOV R5, R4
@@ -92,19 +76,29 @@ set_delay:
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
 	MOVS R1, #0b11111111    @ Reset all LEDs (GPIOB Pins 0-7) to off
 	STR R1, [R0, #40]
-	B set_delay
+
+	B increment_by_1
+
+set_long_delay:          @ Subroutine to set long delay
+    LDR R3, LONG_DELAY_CNT  @ Set short delay to 0.7s
+    BX LR
 
 set_short_delay:          @ Subroutine to set short delay
-    LDR R3, SHORT_DELAY_CNT  @ Set short delay (e.g., 1 second)
-    B continue                   @ Return to the point where BL was called
+    LDR R3, SHORT_DELAY_CNT  @ Set short delay to 0.3s
+    BX LR
 
-increament_by_2:
+increment_by_2: //increment by two branch
+
 	@ Turn LEDs on
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
 	MOV R1, R4
 	STR R1, [R0, #24]
 	MOV R2, R3
 	BL delay
+
+	//increment by one branch
+	BL sw1_handler
+	BL sw2_handler
 	BL freeze
 
 	MOV R5, R4
@@ -112,12 +106,24 @@ increament_by_2:
 	SUBS R6, R5, R7
 	BEQ main_loop
 	ADDS R4, #2
+
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
 	MOVS R1, #0b11111111    @ Reset all LEDs (GPIOB Pins 0-7) to off
 	STR R1, [R0, #40]
-	B increament_by_2
+
+	@ Check if SW0 (PA0) is pressed
+	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
+	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
+	LSLS R1, R1, #31        @ Test if bit 0 (PA0) is low (SW0 pressed)
+	BNE main_loop
+
+	B increment_by_2
 
 sw2_pattern:
+	//Turn off all LEDs
+    LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
+	MOVS R1, #0b11111111    @ Reset all LEDs (GPIOB Pins 0-7) to off
+	STR R1, [R0, #40]
 
 	@ Turn LEDs on
 	LDR R0, GPIOB_BASE   	@ Load GPIOB base address into R0
@@ -137,6 +143,37 @@ freeze:
 	BEQ freeze              @ If SW3 is pressed (PA3 == 0), branch to increment_by_2
 	BX LR
 
+sw0_handler: //increment by 2
+
+	@ Check if SW0 (PA0) is pressed
+	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
+	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
+	LSLS R1, R1, #31        @ Test if bit 0 (PA0) is low (SW0 pressed)
+	BEQ increment_by_2     @ If pressed, branch to increment by 2
+	BX LR
+
+sw1_handler: //change frequency to 0.3s
+
+	@ Check if SW1 (PA1) is pressed
+	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
+	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
+	LSLS R1, R1, #30        @ Shift left by 30 to move bit 1 (PA1) to the MSB
+	LSRS R1, R1, #31        @ Shift right by 31 to move MSB (original bit 1) to the LSB
+	CMP R1, #0              @ Compare R1 with 0 to check if SW1 is pressed
+	BEQ set_short_delay
+	BNE set_long_delay
+	BX LR
+
+sw2_handler: //change pattern to 0xAA
+
+	@ Check if SW2 (PA2) is pressed
+	LDR R0, GPIOA_BASE      @ Load GPIOA base address into R0
+	LDR R1, [R0, #0x10]     @ Read GPIOA_IDR (input data register)
+	LSLS R1, R1, #29        @ Shift left by 29 to move bit 2 (PA2) to the MSB
+	LSRS R1, R1, #31        @ Shift right by 31 to move MSB (original bit 2) to the LSB
+	BEQ sw2_pattern         @ If SW2 is pressed (PA2 == 0), branch to 0xAA pattern
+	BX LR
+
 delay:
 delay_loop:
 	SUBS R2, R2, #1         @ Decrement delay counter
@@ -152,5 +189,5 @@ GPIOB_BASE:  		.word 0x48000400
 MODER_OUTPUT: 		.word 0x5555
 
 @ TODO: Add your own values for these delays
-LONG_DELAY_CNT: 	.word 100000
-SHORT_DELAY_CNT: 	.word 600000
+LONG_DELAY_CNT: 	.word 1400000
+SHORT_DELAY_CNT: 	.word 300000
